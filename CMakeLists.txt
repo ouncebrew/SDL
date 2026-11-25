@@ -4230,11 +4230,32 @@ if(SDL_INSTALL)
 
   ##### sdl3.pc #####
   configure_sdl3_pc()
+  if(NINTENDO_SWITCH2 AND OUNCE_SHARED AND SDL_SHARED)
+    # Switch 2 shared portlib: a second sdl3.pc with libdir under lib/shared,
+    # found first by aarch64-none-elf-pkg-config for dynamic programs.
+    set(SDL_PKGCONFIG_LIBDIR_SAVE "${CMAKE_INSTALL_LIBDIR}")
+    set(CMAKE_INSTALL_LIBDIR "lib/shared")
+    configure_sdl3_pc()
+    file(REMOVE "${SDL3_BINARY_DIR}/sdl3-shared.pc")
+    file(RENAME "${SDL3_BINARY_DIR}/sdl3.pc" "${SDL3_BINARY_DIR}/sdl3-shared.pc")
+    set(CMAKE_INSTALL_LIBDIR "${SDL_PKGCONFIG_LIBDIR_SAVE}")
+    unset(SDL_PKGCONFIG_LIBDIR_SAVE)
+    configure_sdl3_pc()
+    install(FILES "${SDL3_BINARY_DIR}/sdl3-shared.pc" RENAME "sdl3.pc" DESTINATION "lib/shared/pkgconfig")
+  endif()
   if(NOT SDL_FRAMEWORK)
     install(FILES ${SDL3_BINARY_DIR}/sdl3.pc DESTINATION "${SDL_PKGCONFIG_INSTALLDIR}")
   endif()
 
   ##### Installation targets #####()
+
+  if(NINTENDO_SWITCH2 AND OUNCE_SHARED AND SDL_SHARED)
+    # Switch 2 shared portlib layout (as in libounce and OunceVK):
+    # libSDL3.so* under lib/shared, with an NRO and a .pc beside them.
+    set(SDL_OUNCE_SHARED_LIBDIR "lib/shared")
+  else()
+    set(SDL_OUNCE_SHARED_LIBDIR "${CMAKE_INSTALL_LIBDIR}")
+  endif()
 
   install(TARGETS SDL3_Headers EXPORT SDL3headersTargets)
 
@@ -4242,7 +4263,7 @@ if(SDL_INSTALL)
     install(TARGETS SDL3-shared EXPORT SDL3sharedTargets
       PUBLIC_HEADER DESTINATION "${SDL_INSTALL_HEADERSDIR}"
       ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-      LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+      LIBRARY DESTINATION "${SDL_OUNCE_SHARED_LIBDIR}"
       RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
       FRAMEWORK DESTINATION "."
       RESOURCE DESTINATION "${SDL_SDL_INSTALL_RESOURCEDIR}"
@@ -4250,6 +4271,16 @@ if(SDL_INSTALL)
     if(MSVC)
       SDL_install_pdb(SDL3-shared "${CMAKE_INSTALL_BINDIR}")
     endif()
+  endif()
+
+  if(SDL_SHARED AND NINTENDO_SWITCH2 AND OUNCE_SHARED)
+    # The NRO (named by SONAME) that goes on the SD card with the program.
+    install(FILES "${SDL3_BINARY_DIR}/nro/libSDL3.so.${SDL_SO_VERSION_MAJOR}"
+      DESTINATION "lib/shared/nro"
+    )
+    # libSDL3.so as a linker script, as the other shared portlibs do, in
+    # place of the plain copy that install(TARGETS) puts there.
+    install(CODE "file(WRITE \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/lib/shared/libSDL3.so\" \"INPUT(libSDL3.so.${SDL_SO_VERSION_MAJOR})\")")
   endif()
 
   if(SDL_STATIC)

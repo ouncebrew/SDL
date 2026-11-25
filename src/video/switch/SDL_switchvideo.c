@@ -245,7 +245,9 @@ static bool SWITCH_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_
     }
 
     if (!_this->egl_data) {
-        return SDL_SetError("EGL not initialized");
+        if (!SDL_GL_LoadLibrary(NULL)) {
+            return false;
+        }
     }
 
     window_data = (SDL_WindowData *)SDL_calloc(1, sizeof(SDL_WindowData));
