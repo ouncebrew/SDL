@@ -147,13 +147,13 @@ endif()
 #  for the time being. This default will change to ON once this becomes
 #  commonly supported in browsers or the Emscripten team makes a single
 #  binary work everywhere.
-if ((UNIX_OR_MAC_SYS OR NINTENDO_SWITCH) AND NOT EMSCRIPTEN)
+if ((UNIX_OR_MAC_SYS OR NINTENDO_SWITCH2) AND NOT EMSCRIPTEN)
   set(SDL_PTHREADS_DEFAULT ON)
 else()
   set(SDL_PTHREADS_DEFAULT OFF)
 endif()
 
-if((UNIX_SYS OR NINTENDO_SWITCH) OR ANDROID)
+if((UNIX_SYS OR NINTENDO_SWITCH2) OR ANDROID)
   set(SDL_CLOCK_GETTIME_DEFAULT ON)
 else()
   set(SDL_CLOCK_GETTIME_DEFAULT OFF)
@@ -206,7 +206,7 @@ if(EMSCRIPTEN)
   set(SDL_SHARED_AVAILABLE OFF)
 endif()
 
-if(VITA OR PSP OR PS2 OR N3DS OR RISCOS OR NINTENDO_SWITCH)
+if(VITA OR PSP OR PS2 OR N3DS OR RISCOS OR (NINTENDO_SWITCH2 AND NOT OUNCE_SHARED))
   set(SDL_SHARED_AVAILABLE OFF)
 endif()
 
@@ -3407,8 +3407,11 @@ elseif(NGAGE)
       scdv
       gdi
   )
-elseif(NINTENDO_SWITCH)
-  sdl_link_dependency(nx LIBS nx)
+elseif(NINTENDO_SWITCH2)
+  # Ounce (Switch 2) with libounce. -lounce links libounce.a statically,
+  # or libounce.so.1 when configured with -DOUNCE_SHARED=ON (see
+  # libounce's toolchain/cmake/Switch2.cmake).
+  sdl_link_dependency(ounce LIBS ounce)
 
   if(SDL_VIDEO)
     set(SDL_VIDEO_DRIVER_SWITCH 1)
@@ -3417,7 +3420,8 @@ elseif(NINTENDO_SWITCH)
 
     CheckEGL()
     if(HAVE_OPENGL_EGL)
-      sdl_link_dependency(opengl LIBS EGL stdc++ glapi drm_nouveau)
+      # OunceVK provides EGL (C++). glapi/drm_nouveau were Switch 1 (mesa) specifics.
+      sdl_link_dependency(opengl LIBS EGL stdc++)
     endif()
 
     CheckOpenGLES()
@@ -3465,6 +3469,18 @@ elseif(NINTENDO_SWITCH)
   set(SDL_FSOPS_POSIX 1)
   sdl_sources("${SDL3_SOURCE_DIR}/src/filesystem/posix/SDL_sysfsops.c")
   set(HAVE_SDL_FSOPS TRUE)
+
+  if(SDL_SHARED AND OUNCE_SHARED)
+    # Output a dynamic SO for libounce: libSDL3.so with SONAME, plus its
+    # NRO (named by SONAME) for the SD card via libounce's helper.
+    set_target_properties(SDL3-shared PROPERTIES
+      VERSION "${SDL_SO_VERSION}"
+      SOVERSION "${SDL_SO_VERSION_MAJOR}"
+    )
+    if(COMMAND ounce_create_library_nro)
+      ounce_create_library_nro(SDL3-shared)
+    endif()
+  endif()
 
 endif()
 
@@ -4029,7 +4045,7 @@ if(SDL_SHARED)
         RESOURCE "${SDL_FRAMEWORK_RESOURCES}"
       )
     endif()
-  elseif(UNIX AND NOT ANDROID)
+  elseif((UNIX AND NOT ANDROID) OR NINTENDO_SWITCH2)
     set_target_properties(SDL3-shared PROPERTIES
       VERSION "${SDL_SO_VERSION}"
       SOVERSION "${SDL_SO_VERSION_MAJOR}"
