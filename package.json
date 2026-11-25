@@ -1,0 +1,12 @@
+{
+    "title": "SDL3",
+    "author": "SDL, ouncebrew",
+    "version": "3.4.0.0",
+    "description": "A low level API for management of applications",
+    "details": "Simple DirectMedia Layer (SDL for short) is a cross-platform library designed to make it easy to write multi-media software, such as games and emulators.",
+    "license": "Zlib",
+    "changelog": "N/A",
+    "date": "24/11/2026 12:00",
+    "requiredDeletion": [],
+    "userDeletion": []
+}
